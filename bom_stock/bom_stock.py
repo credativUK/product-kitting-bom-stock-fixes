@@ -69,6 +69,10 @@ class product_product(orm.Model):
                 # Compute stock qty of each product used in the BoM and
                 # get the minimal number of items we can produce with them
                 for line in bom.bom_lines:
+
+                    if line.product_id.type == 'service':
+                        continue
+
                     prod_min_quantity = 0.0
                     bom_qty = line.product_id[stock_field] # expressed in product UOM
                     # the reference stock of the component must be greater
@@ -96,7 +100,9 @@ class product_product(orm.Model):
                                                         bom.product_qty,
                                                         bom.product_id.uom_id,
                                                         context=context)
-                product_qty += min(prod_min_quantities) * produced_qty
+                if prod_min_quantities:
+                    product_qty += min(prod_min_quantities) * produced_qty
+
         return product_qty
 
     def _product_available(self, cr, uid, ids, field_names=None,
