@@ -103,6 +103,17 @@ class product_product(orm.Model):
                 if prod_min_quantities:
                     product_qty += min(prod_min_quantities) * produced_qty
 
+                # UoM rounding currently rounds up using ceiling().
+                # Rounding down is required here - if we can't complete a BoM,
+                # we don't want to include it in stock.
+                # We can make ceiling() behave like floor() by supplying the
+                # negative quantity and taking the nagative of the result.
+                product_qty = -uom_obj._compute_qty_obj(cr, uid,
+                                                       bom.product_id.uom_id,
+                                                       -product_qty,
+                                                       bom.product_id.uom_id,
+                                                       context=context)
+
         return product_qty
 
     def _product_available(self, cr, uid, ids, field_names=None,
