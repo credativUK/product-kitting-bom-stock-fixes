@@ -65,6 +65,22 @@ class product_product(orm.Model):
             prod_min_quantities = []
             bom = bom_obj.browse(cr, uid, bom_id, context=context)
             if bom.bom_lines:
+
+                # Pre-calculate the BoM line quantities in case there are multiple
+                # lines which share the same product. If so, sum the quantites.
+                line_product_quantities = {}
+                for line in bom.bom_lines:
+                    if line.product_id.type == 'service':
+                        continue
+                    line_product_qty = uom_obj._compute_qty_obj(cr, uid,
+                                                                line.product_uom,
+                                                                line.product_qty,
+                                                                line.product_id.uom_id,
+                                                                context=context)
+                    current_line_product_qty = line_product_quantities.get(line.product_id.id, 0.0)
+                    line_product_quantities.update({line.product_id.id : current_line_product_qty + line_product_qty})
+
+
                 stop_compute_bom = False
                 # Compute stock qty of each product used in the BoM and
                 # get the minimal number of items we can produce with them
@@ -78,11 +94,8 @@ class product_product(orm.Model):
                     # the reference stock of the component must be greater
                     # than the quantity of components required to
                     # build the bom
-                    line_product_qty = uom_obj._compute_qty_obj(cr, uid,
-                                                                line.product_uom,
-                                                                line.product_qty,
-                                                                line.product_id.uom_id,
-                                                                context=context)
+                    line_product_qty = line_product_quantities[line.product_id.id]
+
                     if bom_qty >= line_product_qty:
                         prod_min_quantity = bom_qty / line_product_qty  # line.product_qty is always > 0
                     else:
